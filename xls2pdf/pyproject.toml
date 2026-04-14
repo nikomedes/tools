@@ -1,0 +1,25 @@
+[project]
+name = "xlsx-to-pdf-splitter"
+version = "0.1.0"
+description = "Split XLSX into individual PDFs with fixed header rows"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "openpyxl>=3.1.0",
+    "reportlab>=4.0.0"
+]
+
+[project.scripts]
+xlsx-to-pdf = "xlsx_to_pdf.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = []
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xlsx_to_pdf"]
+

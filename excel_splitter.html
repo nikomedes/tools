@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Arbeitspaket-Splitter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #75b62e 0%, #5a8f23 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #75b62e 0%, #5a8f23 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .upload-area {
+            border: 3px dashed #75b62e;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s;
+            background: #f8fdf4;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: #5a8f23;
+            background: #f0fae8;
+        }
+        
+        .upload-area.drag-over {
+            border-color: #5a8f23;
+            background: #e6f7d9;
+            border-width: 4px;
+            transform: scale(1.02);
+        }
+        
+        .upload-area input[type="file"] {
+            display: none;
+        }
+        
+        .upload-label {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #75b62e 0%, #5a8f23 100%);
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: transform 0.2s;
+        }
+        
+        .upload-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(117, 182, 46, 0.4);
+        }
+        
+        .file-name {
+            margin-top: 15px;
+            font-weight: bold;
+            color: #75b62e;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        .form-group input[type="date"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input[type="date"]:focus {
+            outline: none;
+            border-color: #75b62e;
+        }
+        
+        .form-group select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+            background: white;
+        }
+        
+        .form-group select:focus {
+            outline: none;
+            border-color: #75b62e;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #75b62e 0%, #5a8f23 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(117, 182, 46, 0.4);
+        }
+        
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .info-box {
+            background: #f8fdf4;
+            border-left: 4px solid #75b62e;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+        
+        .info-box h3 {
+            color: #75b62e;
+            margin-bottom: 10px;
+        }
+        
+        .info-box ul {
+            margin-left: 20px;
+        }
+        
+        .info-box li {
+            margin: 5px 0;
+        }
+        
+        .spinner {
+            display: none;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #75b62e;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .processing {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Excel Arbeitspaket-Splitter</h1>
+            <p>Excel-Datei konvertieren und nach Arbeitspaketen aufteilen</p>
+        </div>
+        
+        <div class="content">
+            <div id="alertContainer"></div>
+            
+            <div class="upload-area" id="dropArea">
+                <input type="file" id="fileInput" accept=".xlsx" />
+                <label for="fileInput" class="upload-label">
+                    📁 Excel-Datei auswählen
+                </label>
+                <div class="file-name" id="fileName"></div>
+                <p style="margin-top: 15px; color: #666; font-size: 0.9em;">
+                    oder Datei hierher ziehen
+                </p>
+            </div>
+            
+            <div class="form-group">
+                <label for="date">📅 Belegdatum (optional - leer lassen für alle Zeilen):</label>
+                <input type="date" id="date">
+            </div>
+            
+            <div class="form-group">
+                <label for="splitBy">🔍 Aufteilung nach:</label>
+                <select id="splitBy">
+                    <option value="arbeitspaket">Arbeitspaket (AP1, AP2, ...)</option>
+                    <option value="unterpaket">Unterpaket (z.B. MF, UI, ...)</option>
+                </select>
+            </div>
+            
+            <button id="processBtn" class="submit-btn" disabled>
+                ⚡ Datei verarbeiten und ZIP erstellen
+            </button>
+            
+            <div class="processing" id="processing">
+                <div class="spinner"></div>
+                <p>Verarbeite Datei...</p>
+            </div>
+            
+            <div class="info-box">
+                <h3>ℹ️ Hinweise:</h3>
+                <ul>
+                    <li>Die Excel-Datei sollte die Spalte "Bezeichnung" mit Arbeitspaketen enthalten</li>
+                    <li>Format: "AP1: Beschreibung" oder "AP1: MF Beschreibung"</li>
+                    <li><strong>Unterpakete müssen genau 2 Großbuchstaben sein mit Leerzeichen davor und danach</strong></li>
+                    <li>Ohne Datumsauswahl werden alle Zeilen verarbeitet</li>
+                    <li>Mit Datum werden nur Zeilen ab diesem Datum berücksichtigt</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFile = null;
+        
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDiv = document.getElementById('fileName');
+        const processBtn = document.getElementById('processBtn');
+        const alertContainer = document.getElementById('alertContainer');
+        const processing = document.getElementById('processing');
+        const spinner = document.querySelector('.spinner');
+        
+        // Drag & Drop Events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => {
+                dropArea.classList.add('drag-over');
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => {
+                dropArea.classList.remove('drag-over');
+            }, false);
+        });
+        
+        dropArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.endsWith('.xlsx')) {
+                    handleFile(file);
+                } else {
+                    showAlert('Bitte nur .xlsx Dateien verwenden!', 'error');
+                }
+            }
+        }
+        
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        function handleFile(file) {
+            currentFile = file;
+            fileNameDiv.textContent = '✓ Ausgewählt: ' + file.name;
+            processBtn.disabled = false;
+        }
+        
+        processBtn.addEventListener('click', processFile);
+        
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+        
+        function extractArbeitspaket(bezeichnung) {
+            if (!bezeichnung) return 'Unbekannt';
+            const match = bezeichnung.toString().trim().match(/^(AP\d+)/);
+            return match ? match[1] : 'Unbekannt';
+        }
+        
+        function extractUnterpaket(bezeichnung) {
+            if (!bezeichnung) return 'Unbekannt';
+            const match = bezeichnung.toString().trim().match(/^AP\d+:\s+([A-Z]{2})\s+/);
+            return match ? match[1] : 'Kein_Unterpaket';
+        }
+        
+        async function processFile() {
+            if (!currentFile) {
+                showAlert('Bitte wählen Sie zuerst eine Datei aus!', 'error');
+                return;
+            }
+            
+            processBtn.disabled = true;
+            processing.style.display = 'block';
+            spinner.style.display = 'block';
+            
+            try {
+                const dateFilter = document.getElementById('date').value;
+                const splitBy = document.getElementById('splitBy').value;
+                
+                // Excel-Datei einlesen
+                const data = await currentFile.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                let jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                
+                // Prüfen ob Bezeichnung vorhanden ist
+                if (jsonData.length === 0 || !jsonData[0].hasOwnProperty('Bezeichnung')) {
+                    throw new Error('Die Spalte "Bezeichnung" wurde nicht gefunden!');
+                }
+                
+                // Datumsfilter anwenden
+                if (dateFilter && jsonData[0].hasOwnProperty('Belegdatum')) {
+                    const filterDate = new Date(dateFilter);
+                    jsonData = jsonData.filter(row => {
+                        if (!row.Belegdatum) return false;
+                        const rowDate = new Date(row.Belegdatum);
+                        return rowDate >= filterDate;
+                    });
+                }
+                
+                // Arbeitspaket-Spalte hinzufügen
+                jsonData.forEach(row => {
+                    row.Arbeitspaket = extractArbeitspaket(row.Bezeichnung);
+                });
+                
+                // Spalten neu anordnen (Arbeitspaket vor Bezeichnung)
+                const reorderedData = jsonData.map(row => {
+                    const newRow = {};
+                    for (let key in row) {
+                        if (key === 'Bezeichnung') {
+                            newRow.Arbeitspaket = row.Arbeitspaket;
+                            newRow.Bezeichnung = row.Bezeichnung;
+                        } else if (key !== 'Arbeitspaket') {
+                            newRow[key] = row[key];
+                        }
+                    }
+                    return newRow;
+                });
+                
+                // Kriterium für Aufteilung extrahieren
+                reorderedData.forEach(row => {
+                    if (splitBy === 'arbeitspaket') {
+                        row.__Kriterium = row.Arbeitspaket;
+                    } else if (splitBy === 'unterpaket') {
+                        row.__Kriterium = extractUnterpaket(row.Bezeichnung);
+                    }
+                });
+                
+                // Gruppierung
+                const groups = {};
+                reorderedData.forEach(row => {
+                    const criterion = row.__Kriterium;
+                    if (!groups[criterion]) {
+                        groups[criterion] = [];
+                    }
+                    const cleanRow = { ...row };
+                    delete cleanRow.__Kriterium;
+                    groups[criterion].push(cleanRow);
+                });
+                
+                // ZIP erstellen
+                const zip = new JSZip();
+                
+                // Gesamtdatei hinzufügen
+                const gesamtData = reorderedData.map(row => {
+                    const cleanRow = { ...row };
+                    delete cleanRow.__Kriterium;
+                    return cleanRow;
+                });
+                const gesamtWS = XLSX.utils.json_to_sheet(gesamtData);
+                const gesamtWB = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(gesamtWB, gesamtWS, 'Alle Daten');
+                const gesamtBuffer = XLSX.write(gesamtWB, { type: 'array', bookType: 'xlsx' });
+                zip.file('GESAMT_mit_AP.xlsx', gesamtBuffer);
+                
+                // Einzeldateien hinzufügen
+                for (let criterion in groups) {
+                    const ws = XLSX.utils.json_to_sheet(groups[criterion]);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Daten');
+                    const buffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+                    zip.file(`${criterion}.xlsx`, buffer);
+                }
+                
+                // ZIP herunterladen
+                const content = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                a.download = `arbeitspakete_${timestamp}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showAlert('✅ ZIP-Datei erfolgreich erstellt und heruntergeladen!', 'success');
+                
+            } catch (error) {
+                console.error('Fehler:', error);
+                showAlert('❌ Fehler beim Verarbeiten: ' + error.message, 'error');
+            } finally {
+                processing.style.display = 'none';
+                spinner.style.display = 'none';
+                processBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
