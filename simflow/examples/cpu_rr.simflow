@@ -1,0 +1,132 @@
+// cpu_rr.simflow — CPU-Scheduling: Round Robin
+// Beispiel für SE-Vorlesung: Prozessverwaltung, Scheduling-Algorithmen
+
+simulation "CPU Round Robin Scheduling" {
+
+  // ── Entities ─────────────────────────────────────────────────────────────
+
+  entity Process {
+    pid:       Int
+    burst:     Int          // Gesamtbedarf in ms
+    remaining: Int          // verbleibende Rechenzeit
+    wait:      Int = 0      // Wartezeit (wird automatisch erhöht)
+    state:     String = "ready"
+
+    visual: "process"
+    visual_states: {
+      "running": { color: "green", pulse: true  }
+      "ready":   { color: "blue"                }
+      "done":    { color: "done"                }
+    }
+
+    label:    "'P' + pid"
+    sublabel: "remaining + 'ms'"
+  }
+
+  // ── Stores ────────────────────────────────────────────────────────────────
+
+  store ready:    Queue<Process>   // Bereit-Warteschlange
+  store cpu:      Slot<Process>    // CPU (immer genau 1 Prozess oder leer)
+  store finished: List<Process>    // Fertige Prozesse
+
+  // ── Parameter ────────────────────────────────────────────────────────────
+
+  param quantum: Int(1..20) = 4
+    label "Zeitscheibe q (ms)"
+    step  1
+
+  param n_procs: Int(2..8) = 5
+    label "Anzahl Prozesse"
+    on_change: "reset"
+
+  param algorithm: Choice("RR", "FIFO", "SJF") = "RR"
+    label "Algorithmus"
+    on_change: "reset"
+
+  // ── Built-in Scheduling-Algorithmus ───────────────────────────────────────
+
+  use RoundRobin(
+    queue:   ready,
+    cpu:     cpu,
+    done:    finished,
+    quantum: quantum
+  )
+
+  // ── Initialisierung ───────────────────────────────────────────────────────
+
+  setup {
+    // Typische Burst-Zeiten aus Lehrbuch-Beispielen
+    let bursts = [10, 4, 7, 3, 9]
+    let i = 0
+    repeat n_procs {
+      let b = bursts.at(i)
+      ready.push(Process { pid: i + 1, burst: b, remaining: b })
+      i += 1
+    }
+  }
+
+  // ── Abbruchbedingung ──────────────────────────────────────────────────────
+
+  done when ready.empty && cpu.empty
+
+  // ── Charts ────────────────────────────────────────────────────────────────
+
+  view gantt_cpu {
+    type:     gantt
+    source:   cpu
+    color_by: pid
+    label:    "CPU-Belegung über die Zeit"
+  }
+
+  view wartezeiten {
+    type:   bar
+    source: finished
+    label:  "Wartezeit pro Prozess"
+  }
+
+  view kennzahlen {
+    type: stat_card
+    stats: [
+      { label: "Ø Wartezeit",     value: finished.avg(p => p.wait)  }
+      { label: "Fertige Proz.",   value: finished.size               }
+      { label: "Zeitscheibe q",   value: quantum                     }
+    ]
+  }
+
+  // ── Lernaufgaben ─────────────────────────────────────────────────────────
+
+  task "Vorhersage: Welcher Prozess läuft zuerst?" at tick(0) {
+    type:   predict
+    prompt: "Welcher Prozess erhält zuerst die CPU? (Gib die Prozess-ID ein)"
+    answer: 1
+    hint:   "Round Robin: zuerst kommt, zuerst dient — wer steht vorne in der Queue?"
+  }
+
+  task "Wartezeit ausrechnen" at done {
+    type:      fill_in
+    prompt:    "Wie groß ist die durchschnittliche Wartezeit aller Prozesse (in ms)? Runde auf 1 Dezimalstelle."
+    answer:    finished.avg(p => p.wait)
+    tolerance: 0.6
+    hint:      "Formel: Σ Wartezeit / Anzahl Prozesse. Sieh in den Kennzahlen nach."
+    hint_after: 2
+  }
+
+  // ── Bewertung ─────────────────────────────────────────────────────────────
+
+  scoring {
+    max_points: 10
+    penalty {
+      per_wrong_attempt: 0.2
+      per_hint:          0.25
+      max_deduction:     0.5
+    }
+    bonus {
+      fast_solve_sec: 90
+      bonus_points:   0.1
+    }
+    weights {
+      "Vorhersage: Welcher Prozess läuft zuerst?": 1.0
+      "Wartezeit ausrechnen":                      2.0
+    }
+  }
+}

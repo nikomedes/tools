@@ -1,0 +1,132 @@
+// lru.simflow — Seitenersetzung: LRU (Least Recently Used)
+// Beispiel für SE-Vorlesung: Speicherverwaltung, Paging
+
+simulation "LRU Seitenersetzung" {
+
+  // ── Entities ──────────────────────────────────────────────────────────────
+
+  entity Page {
+    number:    Int
+    last_used: Int = 0      // Tick des letzten Zugriffs
+    state:     String = "cold"
+
+    visual: "page"
+    visual_states: {
+      "cold":    { color: "blue"   }
+      "hot":     { color: "green", pulse: true }
+      "victim":  { color: "red"    }
+    }
+
+    label:    "number"
+    sublabel: "'t=' + last_used"
+  }
+
+  entity Request {
+    number: Int
+
+    visual: "packet"
+    label:  "number"
+  }
+
+  entity LogEntry {
+    tick:  Int
+    page:  Int
+    fault: Bool
+  }
+
+  // ── Stores ────────────────────────────────────────────────────────────────
+
+  store frames:   Array<Page>(4)    // Seitenrahmen im Speicher
+  store sequence: Queue<Request>    // noch zu verarbeitende Anfragen
+  store log:      List<LogEntry>    // Seitenfehler-Protokoll
+
+  // ── Parameter ────────────────────────────────────────────────────────────
+
+  param frame_count: Int(1..8) = 4
+    label "Anzahl Rahmen"
+    on_change: "reset"
+
+  param ref_length: Int(5..20) = 10
+    label "Länge Referenzstring"
+    on_change: "reset"
+
+  // ── Built-in Algorithmus ──────────────────────────────────────────────────
+
+  use LRU(
+    frames:   frames,
+    requests: sequence,
+    log:      log
+  )
+
+  // ── Initialisierung ───────────────────────────────────────────────────────
+
+  setup {
+    // Klassischer Referenzstring aus dem Tanenbaum-Lehrbuch
+    let pages = [7, 0, 1, 2, 0, 3, 0, 4, 2, 3]
+
+    for p in pages {
+      sequence.push(Request { number: p })
+    }
+  }
+
+  // ── Abbruchbedingung ──────────────────────────────────────────────────────
+
+  done when sequence.empty
+
+  // ── Views ─────────────────────────────────────────────────────────────────
+
+  view seitenfehler_verlauf {
+    type:   line
+    source: log
+    label:  "Seitenfehler über die Zeit"
+  }
+
+  view kennzahlen {
+    type: stat_card
+    stats: [
+      { label: "Seitenfehler",  value: log.count(e => e.fault)         }
+      { label: "Hits",          value: log.count(e => !e.fault)        }
+      { label: "Fehlerrate %",  value: log.size > 0
+                                  ? log.count(e => e.fault) * 100 / log.size
+                                  : 0                                   }
+    ]
+  }
+
+  // ── Lernaufgaben ─────────────────────────────────────────────────────────
+
+  task "Was ist ein Seitenfehler?" at tick(1) {
+    type:   choose
+    prompt: "Bei Tick 1 wird Seite 7 angefragt. Was passiert?"
+    options: [
+      "Seitenfehler — Seite 7 ist nicht im Speicher, wird geladen"
+      "Cache-Hit — Seite 7 ist bereits im Speicher"
+      "Seite 7 wird verworfen"
+    ]
+    answer: "Seitenfehler — Seite 7 ist nicht im Speicher, wird geladen"
+    hint:   "Der Speicher ist zu Beginn leer — jede erste Anfrage ist ein Seitenfehler."
+  }
+
+  task "Seitenfehler zählen" at done {
+    type:      fill_in
+    prompt:    "Wie viele Seitenfehler entstehen insgesamt bei 4 Rahmen und dem Referenzstring [7,0,1,2,0,3,0,4,2,3]?"
+    answer:    log.count(e => e.fault)
+    tolerance: 0
+    hint:      "Schaue in die Kennzahlen — oder zähle im Log mit, wann 'fault' true ist."
+    hint_after: 1
+  }
+
+  // ── Bewertung ─────────────────────────────────────────────────────────────
+
+  scoring {
+    max_points: 10
+    penalty {
+      per_wrong_attempt: 0.2
+      per_hint:          0.25
+      max_deduction:     0.5
+    }
+    weights {
+      "Was ist ein Seitenfehler?": 1.0
+      "Seitenfehler zählen":       2.0
+    }
+  }
+}

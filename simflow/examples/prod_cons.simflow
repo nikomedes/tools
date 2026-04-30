@@ -1,0 +1,108 @@
+// prod_cons.simflow — Produzenten-Konsumenten-Problem
+// Kein JavaScript nötig — vollständig mit SimFlow-Ausdruckssprache
+// Eignet sich für: Betriebssysteme, Parallelverarbeitung, Synchronisation
+
+simulation "Produzenten-Konsumenten" {
+
+  // ── Entities ──────────────────────────────────────────────────────────────
+
+  entity Item {
+    id:    Int
+    state: String = "fresh"
+
+    visual: "packet"
+    visual_states: {
+      "fresh":    { color: "green" }
+      "consumed": { color: "done"  }
+    }
+
+    label:    "id"
+  }
+
+  // ── Stores ────────────────────────────────────────────────────────────────
+
+  store buffer:   Queue<Item>    // Puffer (begrenzte Kapazität)
+  store produced: List<Item>     // alle erzeugten Items
+  store consumed: List<Item>     // alle verbrauchten Items
+
+  // ── Parameter ────────────────────────────────────────────────────────────
+
+  param capacity:  Int(1..10) = 5
+    label     "Puffergröße N"
+    on_change: "reset"
+
+  param prod_rate: Int(1..4) = 1
+    label "Produziert alle N Ticks"
+    step  1
+
+  param cons_rate: Int(1..4) = 2
+    label "Konsumiert alle N Ticks"
+    step  1
+
+  param goal:     Int(5..30) = 15
+    label "Ziel: Items erzeugen"
+    on_change: "reset"
+
+  // ── Regeln ───────────────────────────────────────────────────────────────
+  // Kein JavaScript — nur SimFlow-Ausdruckssprache
+
+  rule produce when buffer.size < capacity && tick % prod_rate == 0 {
+    let item = Item { id: produced.size + 1 }
+    buffer.push(item)
+    produced.add(item)
+  }
+
+  rule consume when buffer.nonempty && tick % cons_rate == 0 {
+    let item = buffer.pop()
+    item.state = "consumed"
+    consumed.add(item)
+  }
+
+  // ── Abbruchbedingung ──────────────────────────────────────────────────────
+
+  done when produced.size >= goal && buffer.empty
+
+  // ── Views ─────────────────────────────────────────────────────────────────
+
+  view puffer_verlauf {
+    type:   line
+    label:  "Pufferfüllstand über die Zeit"
+  }
+
+  view kennzahlen {
+    type: stat_card
+    stats: [
+      { label: "Erzeugt",       value: produced.size  }
+      { label: "Verbraucht",    value: consumed.size   }
+      { label: "Im Puffer",     value: buffer.size     }
+      { label: "Kapazität",     value: capacity        }
+    ]
+  }
+
+  // ── Lernaufgaben ─────────────────────────────────────────────────────────
+
+  task "Pufferfüllstand vorhersagen" at tick(5) {
+    type:   fill_in
+    prompt: "Nach 5 Ticks — wie viele Items sind im Puffer? (prod_rate=1, cons_rate=2, capacity=5)"
+    answer: buffer.size
+    hint:   "Der Produzent erzeugt jedes Tick ein Item. Der Konsument verbraucht jedes 2. Tick eines."
+  }
+
+  task "Ergebnis überprüfen" at done {
+    type:   fill_in
+    prompt: "Wie viele Items wurden insgesamt konsumiert?"
+    answer: consumed.size
+    hint:   "Sieh in die Kennzahlen."
+  }
+
+  // ── Bewertung ─────────────────────────────────────────────────────────────
+
+  scoring {
+    max_points: 10
+    penalty {
+      per_wrong_attempt: 0.2
+      per_hint:          0.25
+      max_deduction:     0.5
+    }
+  }
+}

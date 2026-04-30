@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SimFlow Engine — Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary:      #faf8f2;
+      --bg-secondary:    #f5f3ec;
+      --bg-tertiary:     #ede9de;
+      --text-primary:    #1a1916;
+      --text-secondary:  #555450;
+      --text-tertiary:   #88877e;
+      --border:          rgba(0,0,0,.09);
+      --accent:          #1D9E75;
+      --accent2:         #534AB7;
+      --font-sans:       system-ui, -apple-system, sans-serif;
+      --font-mono:       'Jetbrains Mono', 'Fira Code', monospace;
+
+      /* SimFlow CSS variable bindings */
+      --color-background-primary:   var(--bg-primary);
+      --color-background-secondary: var(--bg-secondary);
+      --color-background-tertiary:  var(--bg-tertiary);
+      --color-text-primary:         var(--text-primary);
+      --color-text-secondary:       var(--text-secondary);
+      --color-text-tertiary:        var(--text-tertiary);
+      --color-border-tertiary:      var(--border);
+      --color-text-success:         #0F6E56;
+      --color-text-warning:         #BA7517;
+      --color-text-danger:          #A32D2D;
+      --color-text-info:            #185FA5;
+      --color-background-success:   #d4f0e5;
+      --color-background-warning:   #fef3d0;
+      --color-background-danger:    #fde8e8;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary:    #1c1b19;
+        --bg-secondary:  #252421;
+        --bg-tertiary:   #2e2c2a;
+        --text-primary:  #f1ede0;
+        --text-secondary:#c2c0b6;
+        --text-tertiary: #7a7870;
+        --border:        rgba(255,255,255,.08);
+      }
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* Page header */
+    .page-header {
+      padding: 32px 40px 20px;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .page-header-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+    }
+    .logo-lockup { display: flex; align-items: center; gap: 12px; }
+    .logo-badge {
+      background: var(--accent); color: white;
+      font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+      font-family: var(--font-mono); font-weight: 600;
+      padding: 4px 10px; border-radius: 5px;
+    }
+    h1 { font-size: 22px; font-weight: 700; }
+    .tagline { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+    .header-links { display: flex; gap: 12px; }
+    .header-link {
+      font-size: 12px; color: var(--text-secondary); text-decoration: none;
+      padding: 5px 12px; border-radius: 5px;
+      border: 0.5px solid var(--border);
+      transition: all .15s;
+    }
+    .header-link:hover { color: var(--text-primary); background: var(--bg-secondary); }
+    .header-link.primary { background: var(--accent); color: white; border-color: var(--accent); }
+    .header-link.primary:hover { background: #167d5e; }
+
+    /* Tabs */
+    .tabs-wrap {
+      max-width: 1100px; margin: 0 auto; padding: 0 40px;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .tabs { display: flex; gap: 0; }
+    .tab-btn {
+      padding: 14px 22px; font-size: 13px; font-weight: 500; cursor: pointer;
+      border: none; background: none; color: var(--text-secondary);
+      border-bottom: 2px solid transparent; transition: all .15s;
+    }
+    .tab-btn:hover { color: var(--text-primary); }
+    .tab-btn.active { color: var(--text-primary); border-bottom-color: var(--text-primary); }
+
+    /* Content */
+    .content {
+      max-width: 1100px; margin: 0 auto; padding: 32px 40px;
+    }
+
+    /* Simulation panel */
+    .sim-panel { display: none; }
+    .sim-panel.active { display: block; }
+
+    .sim-meta {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px;
+    }
+    .sim-meta-card {
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: 8px; padding: 12px 16px;
+    }
+    .sim-meta-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--text-tertiary); font-family: var(--font-mono); margin-bottom: 4px;
+    }
+    .sim-meta-value { font-size: 13px; color: var(--text-primary); font-weight: 500; }
+
+    /* Source code toggle */
+    .source-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .source-label {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--text-tertiary); font-family: var(--font-mono);
+    }
+    .btn-small {
+      font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+      border: 0.5px solid var(--border); background: var(--bg-secondary);
+      color: var(--text-secondary); transition: all .15s;
+    }
+    .btn-small:hover { color: var(--text-primary); }
+
+    .source-block {
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: 8px; overflow: hidden; margin-bottom: 24px;
+      display: none;
+    }
+    .source-block.open { display: block; }
+    pre.source-code {
+      padding: 16px 20px; font-family: var(--font-mono); font-size: 12px;
+      line-height: 1.8; overflow-x: auto; color: var(--text-secondary);
+      max-height: 320px; overflow-y: auto;
+    }
+    .kw  { color: var(--accent2); font-weight: 500; }
+    .st  { color: var(--accent); }
+    .nu  { color: #BA7517; }
+    .cm  { color: var(--text-tertiary); font-style: italic; }
+    .ty  { color: #185FA5; }
+
+    /* Simulation container */
+    .sim-container {
+      position: relative; min-height: 300px;
+    }
+
+    /* Score export */
+    .export-bar {
+      display: flex; gap: 8px; align-items: center;
+      margin-top: 16px; padding-top: 16px;
+      border-top: 0.5px solid var(--border);
+    }
+    .export-label { font-size: 12px; color: var(--text-secondary); }
+    .btn-export {
+      font-size: 12px; padding: 5px 14px; border-radius: 5px; cursor: pointer;
+      border: 0.5px solid var(--border); background: var(--bg-secondary);
+      color: var(--text-secondary); transition: all .15s;
+    }
+    .btn-export:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+
+    /* DSL quick-ref sidebar */
+    .dsl-ref {
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: 8px; padding: 16px; margin-top: 24px;
+    }
+    .dsl-ref-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--text-tertiary); font-family: var(--font-mono); margin-bottom: 12px;
+    }
+    .dsl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .dsl-chip {
+      font-family: var(--font-mono); font-size: 11px; padding: 3px 8px;
+      border-radius: 4px; border: 0.5px solid var(--border);
+      background: var(--bg-primary); color: var(--text-secondary);
+    }
+    .dsl-chip-kw  { border-color: rgba(83,74,183,.3); color: var(--accent2); }
+    .dsl-chip-ty  { border-color: rgba(24,95,165,.3); color: #185FA5; }
+    .dsl-chip-fn  { border-color: rgba(29,158,117,.3); color: var(--accent); }
+
+    /* Loading state */
+    .sf-loading {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 200px; color: var(--text-tertiary); font-size: 14px; gap: 10px;
+    }
+    .sf-spinner {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error state */
+    .sf-error {
+      padding: 20px; border-radius: 8px; font-size: 13px;
+      background: #fde8e8; color: #A32D2D; border: 0.5px solid rgba(163,45,45,.2);
+      font-family: var(--font-mono);
+    }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      .page-header { padding: 20px; }
+      .content { padding: 20px; }
+      .tabs-wrap { padding: 0 20px; }
+      .sim-meta { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Page Header -->
+<header class="page-header">
+  <div class="page-header-inner">
+    <div>
+      <div class="logo-lockup">
+        <div class="logo-badge">SimFlow</div>
+        <h1>Simulation Engine</h1>
+      </div>
+      <div class="tagline">
+        Deklarative Lehr-Simulationen — Algorithmik, Betriebssysteme, Softwareentwicklung
+      </div>
+    </div>
+    <div class="header-links">
+      <a class="header-link" href="#" onclick="showDSLRef()">DSL-Referenz</a>
+      <a class="header-link primary" href="simflow.js">Engine einbinden</a>
+    </div>
+  </div>
+</header>
+
+<!-- Tabs -->
+<div class="tabs-wrap">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('cpu')">
+      CPU Scheduling (RR)
+    </button>
+    <button class="tab-btn" onclick="switchTab('lru')">
+      Seitenersetzung (LRU)
+    </button>
+    <button class="tab-btn" onclick="switchTab('prod')">
+      Produzent-Konsument
+    </button>
+  </div>
+</div>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- ── CPU Round Robin ───────────────────────────────────────────────── -->
+  <div class="sim-panel active" id="panel-cpu">
+
+    <div class="sim-meta">
+      <div class="sim-meta-card">
+        <div class="sim-meta-label">Thema</div>
+        <div class="sim-meta-value">CPU-Scheduling, Round Robin, Prozesse</div>
+      </div>
+      <div class="sim-meta-card">
+        <div class="sim-meta-label">Algorithmus</div>
+        <div class="sim-meta-value">use RoundRobin(...) — kein JS nötig</div>
+      </div>
+      <div class="sim-meta-card">
+        <div class="sim-meta-label">Lernziel</div>
+        <div class="sim-meta-value">Zeitscheibe, Wartezeit, Fairness</div>
+      </div>
+    </div>
+
+    <div class="source-toggle">
+      <span class="source-label">cpu_rr.simflow</span>
+      <button class="btn-small" onclick="toggleSource('src-cpu')">Quelltext ▾</button>
+    </div>
+    <div class="source-block" id="src-cpu">
+      <pre class="source-code"><span class="cm">// cpu_rr.simflow — kein JavaScript nötig</span>
+<span class="kw">simulation</span> <span class="st">"CPU Round Robin Scheduling"</span> {
+
+  <span class="kw">entity</span> <span class="ty">Process</span> {
+    pid: <span class="ty">Int</span>; burst: <span class="ty">Int</span>; remaining: <span class="ty">Int</span>; wait: <span class="ty">Int</span> = <span class="nu">0</span>
+    <span class="kw">visual</span>: <span class="st">"process"</span>
+    <span class="kw">visual_states</span>: { <span class="st">"running"</span>: { color: <span class="st">"green"</span>, pulse: <span class="kw">true</span> } }
+    <span class="kw">label</span>:    <span class="st">"'P' + pid"</span>
+    <span class="kw">sublabel</span>: <span class="st">"remaining + 'ms'"</span>
+  }
+
+  <span class="kw">store</span> ready:    <span class="ty">Queue</span>&lt;<span class="ty">Process</span>&gt;
+  <span class="kw">store</span> cpu:      <span class="ty">Slot</span>&lt;<span class="ty">Process</span>&gt;
+  <span class="kw">store</span> finished: <span class="ty">List</span>&lt;<span class="ty">Process</span>&gt;
+
+  <span class="kw">param</span> quantum:   <span class="ty">Int</span>(<span class="nu">1</span>..<span class="nu">20</span>) = <span class="nu">4</span>  <span class="kw">label</span> <span class="st">"Zeitscheibe q (ms)"</span>
+  <span class="kw">param</span> algorithm: <span class="ty">Choice</span>(<span class="st">"RR"</span>,<span class="st">"FIFO"</span>,<span class="st">"SJF"</span>) = <span class="st">"RR"</span>  <span class="kw">on_change</span>: <span class="st">"reset"</span>
+
+  <span class="cm">// Eingebauter Algorithmus — kein Code nötig:</span>
+  <span class="kw">use</span> <span class="ty">RoundRobin</span>(queue: ready, cpu: cpu, done: finished, quantum: quantum)
+
+  <span class="kw">done when</span> ready.empty <span class="kw">&amp;&amp;</span> cpu.empty
+
+  <span class="kw">task</span> <span class="st">"Wartezeit ausrechnen"</span> <span class="kw">at</span> done {
+    <span class="kw">type</span>:      fill_in
+    <span class="kw">answer</span>:    finished.avg(p => p.wait)
+    <span class="kw">tolerance</span>: <span class="nu">0.6</span>
+  }
+}</pre>
+    </div>
+
+    <div class="sim-container" id="container-cpu">
+      <div class="sf-loading"><div class="sf-spinner"></div> Lade Simulation…</div>
+    </div>
+
+    <div class="export-bar">
+      <span class="export-label">Ergebnisse:</span>
+      <button class="btn-export" onclick="exportJSON('cpu')">JSON exportieren</button>
+      <button class="btn-export" onclick="exportCSV('cpu')">CSV (Moodle)</button>
+    </div>
+  </div>
+
+  <!-- ── LRU ─────────────────────────────────────────────────────────────── -->
+  <div class="sim-panel" id="panel-lru">
+
+    <div class="sim-meta">
+      <div class="sim-meta-card">
+        <div class="sim-meta-label">Thema</div>
+        <div class="sim-meta-value">Speicherverwaltung, Paging, Seitenersetzung</div>
+      </div>
+      <div class="sim-meta-card">
+        <div class="sim-meta-label">Algorithmus</div>
+        <div class="sim-meta-value">use LRU(frames, requests, log)</div>
+      </div>
+      <div class="sim-meta-card">
+        <div class="sim-meta-label">Lernziel</div>
+        <div class="sim-meta-value">Seitenfehlerrate, Lokalitätsprinzip</div>
+      </div>
+    </div>
+
+    <div class="source-toggle">
+      <span class="source-label">lru.simflow</span>
+      <button class="btn-small" onclick="toggleSource('src-lru')">Quelltext ▾</button>
+    </div>
+    <div class="source-block" id="src-lru">
+      <pre class="source-code"><span class="kw">simulation</span> <span class="st">"LRU Seitenersetzung"</span> {
+
+  <span class="kw">entity</span> <span class="ty">Page</span>   { number: <span class="ty">Int</span>; last_used: <span class="ty">Int</span> = <span class="nu">0</span>; <span class="kw">visual</span>: <span class="st">"page"</span>   }
+  <span class="kw">entity</span> <span class="ty">Request</span> { number: <span class="ty">Int</span>;                        <span class="kw">visual</span>: <span class="st">"packet"</span> }
+
+  <span class="kw">store</span> frames:   <span class="ty">Array</span>&lt;<span class="ty">Page</span>&gt;(<span class="nu">4</span>)
+  <span class="kw">store</span> sequence: <span class="ty">Queue</span>&lt;<span class="ty">Request</span>&gt;
+  <span class="kw">store</span> log:      <span class="ty">List</span>&lt;<span class="ty">LogEntry</span>&gt;
+
+  <span class="kw">param</span> frame_count: <span class="ty">Int</span>(<span class="nu">1</span>..<span class="nu">8</span>) = <span class="nu">4</span>  <span class="kw">label</span> <span class="st">"Anzahl Rahmen"</span>  <span class="kw">on_change</span>: <span class="st">"reset"</span>
+
+  <span class="cm">// Referenzstring aus Tanenbaum:</span>
+  <span class="kw">use</span> <span class="ty">LRU</span>(frames: frames, requests: sequence, log: log)
+
+  <span class="kw">done when</span> sequence.empty
+
+  <span class="kw">task</span> <span class="st">"Seitenfehler zählen"</span> <span class="kw">at</span> done {
+    <span class="kw">type</span>:   fill_in
+    <span class="kw">answer</span>: log.count(e => e.fault)
+  }
+}</pre>
+    </div>
+
+    <div class="sim-container" id="container-lru">
+      <div class="sf-loading"><div class="sf-spinner"></div> Lade Simulation…</div>
+    </div>
+
+    <div class="export-bar">
+      <span class="export-label">Ergebnisse:</span>
+      <button class="btn-export" onclick="exportJSON('lru')">JSON exportieren</button>
+      <button class="btn-export" onclick="exportCSV('lru')">CSV (Moodle)</button>
+    </div>
+  </div>
+
+  <!-- ── Produzent-Konsument ──────────────────────────────────────────────── -->
+  <div class="sim-panel" id="panel-prod">
+
+    <div class="sim-meta">
+      <div class="sim-meta-card">
+        <div class="sim-meta-label">Thema</div>
+        <div class="sim-meta-value">Synchronisation, Puffer, Parallelverarbeitung</div>
+      </div>
+      <div class="sim-meta-card">
+        <div class="sim-meta-label">Algorithmus</div>
+        <div class="sim-meta-value">Eigene Rules — kein JS, kein use</div>
+      </div>
+      <div class="sim-meta-card">
+        <div class="sim-meta-label">Lernziel</div>
+        <div class="sim-meta-value">Pufferfüllstand, Race Conditions, Raten</div>
+      </div>
+    </div>
+
+    <div class="source-toggle">
+      <span class="source-label">prod_cons.simflow</span>
+      <button class="btn-small" onclick="toggleSource('src-prod')">Quelltext ▾</button>
+    </div>
+    <div class="source-block" id="src-prod">
+      <pre class="source-code"><span class="kw">simulation</span> <span class="st">"Produzenten-Konsumenten"</span> {
+
+  <span class="kw">entity</span> <span class="ty">Item</span> { id: <span class="ty">Int</span>; <span class="kw">visual</span>: <span class="st">"packet"</span> }
+
+  <span class="kw">store</span> buffer:   <span class="ty">Queue</span>&lt;<span class="ty">Item</span>&gt;
+  <span class="kw">store</span> produced: <span class="ty">List</span>&lt;<span class="ty">Item</span>&gt;
+  <span class="kw">store</span> consumed: <span class="ty">List</span>&lt;<span class="ty">Item</span>&gt;
+
+  <span class="kw">param</span> capacity:  <span class="ty">Int</span>(<span class="nu">1</span>..<span class="nu">10</span>) = <span class="nu">5</span>  <span class="kw">label</span> <span class="st">"Puffergröße N"</span>    <span class="kw">on_change</span>: <span class="st">"reset"</span>
+  <span class="kw">param</span> prod_rate: <span class="ty">Int</span>(<span class="nu">1</span>..<span class="nu">4</span>)  = <span class="nu">1</span>  <span class="kw">label</span> <span class="st">"Produziert alle N Ticks"</span>
+  <span class="kw">param</span> cons_rate: <span class="ty">Int</span>(<span class="nu">1</span>..<span class="nu">4</span>)  = <span class="nu">2</span>  <span class="kw">label</span> <span class="st">"Konsumiert alle N Ticks"</span>
+
+  <span class="cm">// Vollständig ohne JavaScript:</span>
+  <span class="kw">rule</span> produce <span class="kw">when</span> buffer.size &lt; capacity <span class="kw">&amp;&amp;</span> tick % prod_rate == <span class="nu">0</span> {
+    buffer.push(<span class="ty">Item</span> { id: produced.size + <span class="nu">1</span> })
+    produced.add(buffer.top)
+  }
+
+  <span class="kw">rule</span> consume <span class="kw">when</span> buffer.nonempty <span class="kw">&amp;&amp;</span> tick % cons_rate == <span class="nu">0</span> {
+    consumed.add(buffer.pop())
+  }
+
+  <span class="kw">done when</span> produced.size >= goal <span class="kw">&amp;&amp;</span> buffer.empty
+}</pre>
+    </div>
+
+    <div class="sim-container" id="container-prod">
+      <div class="sf-loading"><div class="sf-spinner"></div> Lade Simulation…</div>
+    </div>
+
+    <div class="export-bar">
+      <span class="export-label">Ergebnisse:</span>
+      <button class="btn-export" onclick="exportJSON('prod')">JSON exportieren</button>
+      <button class="btn-export" onclick="exportCSV('prod')">CSV (Moodle)</button>
+    </div>
+  </div>
+
+  <!-- DSL Quick Reference -->
+  <div class="dsl-ref" id="dsl-ref-section" style="display:none">
+    <div class="dsl-ref-title">SimFlow DSL — Schnellreferenz</div>
+    <div class="dsl-chips">
+      <span class="dsl-chip dsl-chip-kw">simulation</span>
+      <span class="dsl-chip dsl-chip-kw">entity</span>
+      <span class="dsl-chip dsl-chip-kw">store</span>
+      <span class="dsl-chip dsl-chip-kw">param</span>
+      <span class="dsl-chip dsl-chip-kw">setup</span>
+      <span class="dsl-chip dsl-chip-kw">rule … when</span>
+      <span class="dsl-chip dsl-chip-kw">event</span>
+      <span class="dsl-chip dsl-chip-kw">done when</span>
+      <span class="dsl-chip dsl-chip-kw">view</span>
+      <span class="dsl-chip dsl-chip-kw">task … at</span>
+      <span class="dsl-chip dsl-chip-kw">scoring</span>
+      <span class="dsl-chip dsl-chip-kw">use</span>
+      <span class="dsl-chip dsl-chip-ty">Queue Stack Slot List Array Set</span>
+      <span class="dsl-chip dsl-chip-ty">Int Float String Bool Choice</span>
+      <span class="dsl-chip dsl-chip-ty">visual visual_states label sublabel</span>
+      <span class="dsl-chip dsl-chip-fn">RoundRobin</span>
+      <span class="dsl-chip dsl-chip-fn">LRU</span>
+      <span class="dsl-chip dsl-chip-fn">BubbleSort QuickSort</span>
+      <span class="dsl-chip dsl-chip-fn">Dijkstra BFS DFS</span>
+      <span class="dsl-chip dsl-chip-fn">BankersAlgorithm</span>
+      <span class="dsl-chip dsl-chip-fn">KanbanFlow</span>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<script type="module">
+  import SimFlow from './simflow.js';
+
+  const instances = {};
+
+  async function loadSim(key, file, containerId) {
+    const container = document.getElementById(containerId);
+    try {
+      const sim = await SimFlow.load(file);
+      container.innerHTML = '';
+      const { runtime, ui } = sim.mount(container);
+      instances[key] = ui;
+    } catch (err) {
+      container.innerHTML = `<div class="sf-error">Fehler beim Laden von ${file}:<br>${err.message}</div>`;
+      console.error(err);
+    }
+  }
+
+  // Load first sim immediately
+  loadSim('cpu', 'examples/cpu_rr.simflow', 'container-cpu');
+
+  // Expose tab switch for lazy loading
+  window._loadedTabs = new Set(['cpu']);
+  window._loadSim = loadSim;
+
+  // Export functions
+  window.exportJSON = (key) => {
+    const ui = instances[key];
+    if (!ui) return;
+    const data = JSON.stringify(ui.getScoringData(), null, 2);
+    download(`simflow-${key}-${Date.now()}.json`, data, 'application/json');
+  };
+
+  window.exportCSV = (key) => {
+    const ui = instances[key];
+    if (!ui) return;
+    const data = ui.exportCSV();
+    download(`simflow-${key}-${Date.now()}.csv`, data, 'text/csv');
+  };
+
+  function download(filename, content, type) {
+    const blob = new Blob([content], { type });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+</script>
+
+<script>
+  const TAB_MAP = { cpu: 'cpu', lru: 'lru', prod: 'prod' };
+  const SIM_FILES = {
+    lru:  'examples/lru.simflow',
+    prod: 'examples/prod_cons.simflow'
+  };
+
+  function switchTab(key) {
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+      b.classList.toggle('active', ['cpu','lru','prod'][i] === key);
+    });
+    document.querySelectorAll('.sim-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`panel-${key}`).classList.add('active');
+
+    // Lazy load
+    if (!window._loadedTabs?.has(key) && SIM_FILES[key]) {
+      window._loadedTabs?.add(key);
+      window._loadSim?.(key, SIM_FILES[key], `container-${key}`);
+    }
+  }
+
+  function toggleSource(id) {
+    document.getElementById(id).classList.toggle('open');
+  }
+
+  function showDSLRef() {
+    const ref = document.getElementById('dsl-ref-section');
+    ref.style.display = ref.style.display === 'none' ? 'block' : 'none';
+    ref.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,7 @@
+services:
+  simflow:
+    build: .
+    container_name: simflow
+    ports:
+      - "7070:80"
+    restart: unless-stopped
